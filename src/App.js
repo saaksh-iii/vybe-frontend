@@ -1,4 +1,5 @@
 import "./tokens.css";
+import "./styles.css";
 import { useState } from "react";
 import VibeSelect from "./VibeSelect";
 import Upload from "./Upload";
@@ -12,76 +13,78 @@ import {
   composeBoard,
 } from "./api";
 
+const STEPS = [
+  { id: "vibe", label: "Vibe" },
+  { id: "upload", label: "Upload" },
+  { id: "pose", label: "Poses" },
+  { id: "board", label: "Board" },
+];
+
 function App() {
   const [screen, setScreen] = useState("vibe");
 
-  // data the app remembers between screens
   const [vibe, setVibe] = useState("");
   const [group, setGroup] = useState("");
   const [projectId, setProjectId] = useState(null);
-  const [photos, setPhotos] = useState([]);
   const [analysis, setAnalysis] = useState([]);
   const [poses, setPoses] = useState([]);
   const [slides, setSlides] = useState([]);
 
   const [loading, setLoading] = useState(false);
+  const [loadingMsg, setLoadingMsg] = useState("");
   const [error, setError] = useState("");
 
-  // run any backend call with loading + error handling
-  async function run(fn) {
+  async function run(message, fn) {
     setError("");
+    setLoadingMsg(message);
     setLoading(true);
     try {
       await fn();
     } catch (e) {
-      setError(e.message || "Something went wrong");
+      setError(e.message || "Something went wrong. Try again.");
     } finally {
       setLoading(false);
     }
   }
 
-  // Screen 1: user picked vibe + group and clicked Continue
   function handleVibeContinue() {
     if (!vibe || !group) {
-      setError("Pick a vibe and who you're shooting with first.");
+      setError("Pick a vibe and who is in the photos to continue.");
       return;
     }
-    run(async () => {
+    run("Setting up your project. The first request can take up to a minute while the server wakes up.", async () => {
       const project = await createProject(vibe, group);
       setProjectId(project._id);
       setScreen("upload");
     });
   }
 
-  // Screen 2: user chose photos and clicked Next. files = array of File objects
   function handleUploadNext(files) {
     if (!files || files.length === 0) {
-      setError("Choose at least one photo.");
+      setError("Add at least one photo to continue.");
       return;
     }
-    run(async () => {
-      const up = await uploadPhotos(projectId, files);
-      setPhotos(up.assets);
+    run("Uploading your photos to Cloudinary and reading their composition.", async () => {
+      await uploadPhotos(projectId, files);
 
-      // analysis is a bonus; don't block the flow if it fails
+      // analysis adds detail but should never block the flow
       try {
         const a = await analyzePhotos(projectId);
-        setAnalysis(a.analysis);
+        setAnalysis(a.analysis || []);
       } catch (e) {
         console.warn("Analyze failed:", e.message);
       }
 
       const p = await getPoses(vibe, group);
-      setPoses(p.poses);
+      setPoses(p.poses || []);
       setScreen("pose");
     });
   }
 
-  // Screen 3: user clicked "Make my board"
   function handleMakeBoard() {
-    run(async () => {
+    run("Cropping every photo to Instagram 4:5 with Cloudinary.", async () => {
       const board = await composeBoard(projectId);
-      setSlides(board.slides);
+      setSlides(board.slides || []);
       setScreen("board");
     });
   }
@@ -90,7 +93,6 @@ function App() {
     setVibe("");
     setGroup("");
     setProjectId(null);
-    setPhotos([]);
     setAnalysis([]);
     setPoses([]);
     setSlides([]);
@@ -98,52 +100,95 @@ function App() {
     setScreen("vibe");
   }
 
-  // nav buttons: only allow screens whose data exists
-  function go(target) {
-    setError("");
-    if (target === "upload" && !projectId) return setError("Choose your vibe first.");
-    if (target === "pose" && poses.length === 0) return setError("Upload photos first.");
-    if (target === "board" && slides.length === 0) return setError("Generate your board first.");
-    setScreen(target);
+  function canOpen(id) {
+    if (id === "vibe") return true;
+    if (id === "upload") return Boolean(projectId);
+    if (id === "pose") return poses.length > 0;
+    if (id === "board") return slides.length > 0;
+    return false;
   }
 
+  function go(id) {
+    if (!canOpen(id)) return;
+    setError("");
+    setScreen(id);
+  }
+
+  const currentIndex = STEPS.findIndex((s) => s.id === screen);
+
   return (
-    <div>
-      <nav>
-        <h2>VYBE ●</h2>
-        <button onClick={() => go("vibe")}>Vibe</button>
-        <button onClick={() => go("upload")}>Upload</button>
-        <button onClick={() => go("pose")}>Pose Studio</button>
-        <button onClick={() => go("board")}>Your Board</button>
-      </nav>
+    <div className="v-app">
+      <header className="v-header">
+        <div className="v-logo">
+          <span className="v-logo-mark" aria-hidden="true" />
+          VYBE
+        </div>
+        <ol className="v-steps">
+          {STEPS.map((s, i) => (
+            <li key={s.id}>
+              <button
+                type="button"
+                className={
+                  "v-step" +
+                  (screen === s.id ? " is-active" : "") +
+                  (i < currentIndex ? " is-done" : "")
+                }
+                onClick={() => go(s.id)}
+                disabled={!canOpen(s.id)}
+                aria-current={screen === s.id ? "step" : undefined}
+              >
+                <span className="v-step-num">{i + 1}</span>
+                <span className="v-step-label">{s.label}</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      </header>
 
-      {error && <p role="alert">{error}</p>}
-      {loading && <p>Working on it… the first request can take up to a minute while the server wakes up.</p>}
+      {error && <div className="v-error" role="alert">{error}</div>}
 
-      {screen === "vibe" && (
-        <VibeSelect
-          vibe={vibe}
-          group={group}
-          setVibe={setVibe}
-          setGroup={setGroup}
-          onContinue={handleVibeContinue}
-          loading={loading}
-        />
+      {loading && (
+        <div className="v-loading" role="status">
+          <div className="v-spinner" />
+          <p>{loadingMsg}</p>
+        </div>
       )}
-      {screen === "upload" && (
-        <Upload photos={photos} onNext={handleUploadNext} loading={loading} />
-      )}
-      {screen === "pose" && (
-        <PoseStudio
-          poses={poses}
-          analysis={analysis}
-          onMakeBoard={handleMakeBoard}
-          loading={loading}
-        />
-      )}
-      {screen === "board" && (
-        <YourBoard slides={slides} onStartOver={handleStartOver} loading={loading} />
-      )}
+
+      <main className="v-main">
+        {screen === "vibe" && (
+          <VibeSelect
+            vibe={vibe}
+            group={group}
+            setVibe={setVibe}
+            setGroup={setGroup}
+            onContinue={handleVibeContinue}
+            loading={loading}
+          />
+        )}
+        {screen === "upload" && (
+          <Upload onNext={handleUploadNext} loading={loading} />
+        )}
+        {screen === "pose" && (
+          <PoseStudio
+            poses={poses}
+            vibe={vibe}
+            group={group}
+            onMakeBoard={handleMakeBoard}
+            loading={loading}
+          />
+        )}
+        {screen === "board" && (
+          <YourBoard
+            slides={slides}
+            analysis={analysis}
+            onStartOver={handleStartOver}
+          />
+        )}
+      </main>
+
+      <footer className="v-footer">
+        Photos stored and delivered by Cloudinary with automatic format and quality.
+      </footer>
     </div>
   );
 }
