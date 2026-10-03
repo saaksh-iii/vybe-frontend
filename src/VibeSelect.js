@@ -1,39 +1,49 @@
-import React from "react";
-import { FaSmile, FaLeaf, FaHeart, FaSnowflake, FaStar, FaBolt } from "react-icons/fa";
+import {
+  FaSmile,
+  FaLeaf,
+  FaHeart,
+  FaSnowflake,
+  FaStar,
+  FaBolt,
+  FaUser,
+  FaUserFriends,
+  FaUsers,
+  FaRegHeart,
+} from "react-icons/fa";
+
+const VIBES = [
+  { label: "Cute", icon: <FaSmile /> },
+  { label: "Natural", icon: <FaLeaf /> },
+  { label: "Confident", icon: <FaStar /> },
+  { label: "Romantic", icon: <FaHeart /> },
+  { label: "Cool", icon: <FaSnowflake /> },
+  { label: "Bold", icon: <FaBolt /> },
+];
+
+const GROUPS = [
+  { label: "Solo", icon: <FaUser /> },
+  { label: "Couple", icon: <FaRegHeart /> },
+  { label: "Friends", icon: <FaUserFriends /> },
+  { label: "Group", icon: <FaUsers /> },
+];
 
 function VibeSelect({ vibe, group, setVibe, setGroup, onContinue, loading }) {
   return (
-    <div style={{ backgroundColor:"var(--cream)", padding:"40px" }}>
-      <h1 style={{ fontFamily:"var(--font-headline)", color:"var(--ink)", fontSize:"42px", marginBottom:"20px" }}>
-        You bring the photos. <br /> VYBE finds the vibe ✨
-      </h1>
-      <p style={{ fontFamily:"var(--font-body)", color:"var(--soft-ink)", marginBottom:"30px" }}>
-        Tell us the mood you’re going for, and we’ll turn your real photos into a post that actually looks intentional.
+    <section>
+      <h1 className="v-h1">You bring the photos. VYBE finds the vibe.</h1>
+      <p className="v-lead">
+        Choose the mood you want and who is in the shot. We suggest poses to
+        try, then turn your real photos into a carousel that looks planned.
       </p>
 
-      <h3 style={{ fontFamily:"var(--font-body)", marginBottom:"10px" }}>Pick a vibe 🌈</h3>
-      <div style={{ marginBottom:"20px" }}>
-        {[
-          {label:"Cute", icon:<FaSmile />},
-          {label:"Natural", icon:<FaLeaf />},
-          {label:"Confident", icon:<FaStar />},
-          {label:"Romantic", icon:<FaHeart />},
-          {label:"Cool", icon:<FaSnowflake />},
-          {label:"Bold", icon:<FaBolt />}
-        ].map(v => (
-          <button key={v.label}
-            style={{
-              backgroundColor: vibe===v.label ? "var(--deep-terracotta)" : "var(--terracotta)",
-              borderRadius:"var(--radius-pill)",
-              color:"white",
-              padding:"10px 20px",
-              margin:"5px",
-              border:"none",
-              cursor:"pointer",
-              display:"inline-flex",
-              alignItems:"center",
-              gap:"8px"
-            }}
+      <h2 className="v-label">Pick a vibe</h2>
+      <div className="v-chips">
+        {VIBES.map((v) => (
+          <button
+            key={v.label}
+            type="button"
+            className={"v-chip" + (vibe === v.label ? " is-on" : "")}
+            aria-pressed={vibe === v.label}
             onClick={() => setVibe(v.label)}
           >
             {v.icon} {v.label}
@@ -41,59 +51,36 @@ function VibeSelect({ vibe, group, setVibe, setGroup, onContinue, loading }) {
         ))}
       </div>
 
-      <h3 style={{ fontFamily:"var(--font-body)", marginBottom:"10px" }}>Who’s in it 👥</h3>
-      <div style={{ marginBottom:"30px" }}>
-        {["Solo","Friends","Couple","Group"].map(tag => (
-          <button key={tag}
-            style={{
-              backgroundColor: group===tag ? "var(--lavender)" : "var(--gold)",
-              borderRadius:"var(--radius-pill)",
-              color:"var(--ink)",
-              padding:"10px 20px",
-              margin:"5px",
-              border:"none",
-              cursor:"pointer"
-            }}
-            onClick={() => setGroup(tag)}
+      <h2 className="v-label">Who is in it</h2>
+      <div className="v-tiles">
+        {GROUPS.map((g) => (
+          <button
+            key={g.label}
+            type="button"
+            className={"v-tile" + (group === g.label ? " is-on" : "")}
+            aria-pressed={group === g.label}
+            onClick={() => setGroup(g.label)}
           >
-            {tag}
+            {g.icon}
+            {g.label}
           </button>
         ))}
       </div>
 
-      <button
-        onClick={onContinue}
-        disabled={loading}
-        style={{
-          backgroundColor:"var(--deep-terracotta)",
-          borderRadius:"var(--radius-pill)",
-          color:"white",
-          padding:"12px 24px",
-          border:"none",
-          cursor: loading ? "wait" : "pointer",
-          opacity: loading ? 0.6 : 1,
-          marginRight:"10px"
-        }}
-      >
-        {loading ? "Starting…" : "Start my VYBE 🚀"}
-      </button>
-
-      <button
-        disabled
-        title="Coming soon"
-        style={{
-          backgroundColor:"var(--lavender)",
-          borderRadius:"var(--radius-pill)",
-          color:"var(--ink)",
-          padding:"12px 24px",
-          border:"none",
-          opacity:0.5,
-          cursor:"not-allowed"
-        }}
-      >
-        Describe it myself ✍️ (soon)
-      </button>
-    </div>
+      <div className="v-actions">
+        <button
+          type="button"
+          className="v-btn"
+          onClick={onContinue}
+          disabled={loading || !vibe || !group}
+        >
+          Start my VYBE
+        </button>
+        <button type="button" className="v-btn-quiet" disabled title="Coming soon">
+          Describe it myself (coming soon)
+        </button>
+      </div>
+    </section>
   );
 }
 
